@@ -2,7 +2,7 @@
 
 import time
 
-from nautobot.apps.jobs import IntegerVar, Job, register_jobs
+from nautobot.apps.jobs import BooleanVar, IntegerVar, Job, register_jobs
 
 name = "Webhook Broker Tests"
 
@@ -39,6 +39,23 @@ class RaisingJob(Job):
         raise RuntimeError("Deliberate exception from test job.")
 
 
+class LongExceptionJob(Job):
+    """Raises with a long message: the Job Result summary should wrap exc_message, not overflow the page."""
+
+    length = IntegerVar(default=400, min_value=1, max_value=5000)
+    with_spaces = BooleanVar(default=False, description="Use a long sentence instead of one unbroken token.")
+
+    class Meta:
+        name = "Long exception message"
+
+    def run(self, length, with_spaces):
+        if with_spaces:
+            message = ("This is a deliberately long exception message. " * (length // 47 + 1))[:length]
+        else:
+            message = "x" * length
+        raise RuntimeError(message)
+
+
 class SlowJob(Job):
     """Sleeps, to compare job duration with the endpoint up vs. down."""
 
@@ -52,4 +69,4 @@ class SlowJob(Job):
         return f"slept {seconds}s"
 
 
-register_jobs(PassingJob, FailCalledJob, RaisingJob, SlowJob)
+register_jobs(PassingJob, FailCalledJob, RaisingJob, LongExceptionJob, SlowJob)
